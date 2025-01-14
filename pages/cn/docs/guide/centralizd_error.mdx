@@ -1,0 +1,76 @@
+## 2.错误集中处理
+
+你可以看到，helloHandler返回error:
+
+```go
+func helloHandler(w http.ResponseWriter, r *http.Request) error {
+	w.Write([]byte("hello httpz"))
+	return nil
+}
+```
+
+httpz只是写了一个适配器，把上述的handler转为下面标准库的handler：
+
+```go
+http.HandleFunc("GET /hello", func(w http.ResponseWriter, r *http.Request) {
+	err := helloHandler(w, r)
+
+	if err != nil {
+      // 全局错误处理函数
+      ErrorHandler(w, err)
+	}
+})
+```
+
+这样我们就能集中处理错误。考虑下面的例子：
+
+```go filename="main.go"
+// ...
+
+func helloHandler(w http.ResponseWriter, r *http.Request) error {
+	name := r.URL.Query().Get("name")
+
+	if name == "" {
+		return httpz.NewHTTPError(http.StatusBadRequest, "name is required")
+	}
+
+	fmt.Fprintf(w, "hello %s", name)
+	return nil
+}
+```
+
+当我们访问<span className="text-sky-300">http://localhost:8080/hello</span>
+, 这时name为空字符串，你将会看到:`{"msg":"name is required"}`,这是我们默认的错误处理函数
+返回的响应。
+
+### 默认的错误处理函数
+
+```go
+// default centrailzed error handling function.
+// only the *HTTPError will triger error response.
+func DefaultErrHandlerFunc(err error, w http.ResponseWriter) {
+	if he, ok := err.(*HTTPError); ok {
+		rw := NewHelperRW(w)
+		rw.JSON(he.StatusCode, Map{"msg": he.Msg})
+	} else {
+		slog.Error(err.Error())
+	}
+}
+```
+请注意，默认的错误处理函数只对`*HTTPError`类型的error触发响应，其他类型的error
+只会打印日志。这样设计的理由是，当用户返回`HTTPError`时会明确知道该错误会触发响应，
+减少重复返回响应的可能。
+
+你也可以自定义自己的全局错误处理函数：
+
+```go
+func main() {
+	mux := httpz.NewServeMux()
+
+	mux.ErrHandlerFunc = func(err error, w http.ResponseWriter) {
+      // 已经判断过 err != nil
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+```
+这时，所有非nil的error都会触发响应。

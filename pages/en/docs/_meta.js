@@ -1,5 +1,8 @@
+
 export default {
   index: 'Introduction',
-  installation: 'Installation',
-  'doc-theme': 'Configuration',
+  guide: "Guide",
+  core: "Core",
+  middleware: "Middleware",
+  example: "Example",
 };
