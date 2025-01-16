@@ -5,4 +5,5 @@ export default {
   core: "手写httpz",
   middleware: "中间件",
   example: "例子",
+  benchmark: "基准测试",
 };

@@ -18,8 +18,8 @@ export default function IndexPage() {
           </h2>
           <p className="font-serif text-xl">轻量级的 net/http 1.22+ 增强库，融合了 <span className='font-semibold'>chi & Echo </span> 的优点，
            <br></br> 让你能够轻松地使用 net/http 编写处理器</p>
-          <img src='./logo/httpz.png' alt='httpz.png' className='rounded-lg mx-auto sm:w-5/6 lg:w-1/2 w-1/2' />
 
+             <img src='./logo/httpz.png' alt='httpz.png' className='rounded-lg mx-auto sm:w-5/6 lg:w-1/2 w-full' />
           <div className='mt-10'>
           <Link href={"/cn/docs"}>
           <Button variant="outline" className="h-12 font-semibold text-white text-xl  px-10 bg-[#2563eb] hover:scale-110 transition-transform"> 
@@ -46,6 +46,11 @@ export default function IndexPage() {
                 )
               })
             }
+          </div>
+          
+          <div className='mt-10 flex flex-col gap-10'>
+            <h1 className='text-4xl'>基准测试</h1>
+            <img src='./bench/benchmark.png' alt='httpz.png' className='rounded-lg mx-auto sm:w-5/6 lg:w-1/2 w-full' />
           </div>
         </div>
       </div>

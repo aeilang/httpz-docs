@@ -5,4 +5,5 @@ export default {
   core: "Handwriting httpz",
   middleware: "Middleware",
   example: "Example",
+  benchmark: "Benchmark",
 };
