@@ -1,0 +1,170 @@
+httpz 基于 httpz.ServeMux
+
+> ServeMux 是一个 HTTP 请求多路复用器（Multiplexer），它会将每个传入请求的 URL 与已注册的模式列表进行匹配，并调用最符合模式的处理器
+> -- go.dev
+
+### 基本路由匹配
+
+
+
+
+1. 精确匹配，没有`/`后缀:
+
+```go {4}
+func main() {
+	mux := httpz.NewServeMux()
+
+	mux.Get("/about", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about")
+		return nil
+	})
+
+	http.ListenAndServe(":8080", mux)
+}
+```
+
+- GET <span className="text-sky-300">http://localhost:8080/about</span>, 匹配 "/about" 响应: "/about"
+- GET <span className="text-sky-300">http://localhost:8080/about/</span>, 不匹配 响应: "404 page not found"
+- GET <span className="text-sky-300">http://localhost:8080/about/foo</span>, 不匹配  响应: "404 page not found"
+
+2. `/`作为后缀
+
+考虑下面的例子，它匹配所有以`/about`开头的的GET请求
+
+```go {4}
+func main() {
+	mux := httpz.NewServeMux()
+
+	mux.Get("/about/", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about/")
+		return nil
+	})
+
+	http.ListenAndServe(":8080", mux)
+}
+```
+
+- GET <span className="text-sky-300">http://localhost:8080/about/</span>,匹配 "/about/" 响应: "/about/"
+- GET <span className="text-sky-300">http://localhost:8080/about/foo</span>, 匹配 "/about/" 响应: "/about/"
+
+请注意，访问`GET /about`会自动重定向到`GET /about/`
+- GET <span className="text-sky-300">http://localhost:8080/about</span> -> 重定向 `/about/`
+
+如果注册了`GET /about`就不会重定向到`GET /about/`, 因为`GET /about`更具体。
+
+```go {9}
+func main() {
+	mux := httpz.NewServeMux()
+
+	mux.Get("/about/", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about/")
+		return nil
+	})
+
+	mux.Get("/about", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about")
+		return nil
+	})
+
+	http.ListenAndServe(":8080", mux)
+}
+```
+
+- GET <span className="text-sky-300">http://localhost:8080/about</span> 匹配 "/about", 响应 "/about"
+
+### 匹配规则
+
+考虑下面的例子，如果同时注册了`GET /about/foo` 和 `GET /about/`的请求，访问`GET /about/foo`会匹配哪个控制器呢?
+
+- GET /about/foo 精确匹配
+- GET /about/    匹配所有以`/about/`为前缀的URL
+
+```go {4,9}
+func main() {
+	mux := httpz.NewServeMux()
+
+	mux.Get("/about/foo", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about/foo")
+		return nil
+	})
+
+	mux.Get("/about/", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about/")
+		return nil
+	})
+
+	http.ListenAndServe(":8080", mux)
+}
+```
+
+- GET <span className="text-sky-300">http://localhost:8080/about/foo</span> 匹配 "/about/foo", 响应 "/about/foo"
+
+因为`/about/foo`更具体。路由匹配规则是，更具体的pattern优先匹配。
+
+### 路径清理
+
+URL中有多余的`/`或`.` 会自动去除，并重定向到干净的路径
+
+例如:
+
+- GET /about//foo 重定向到 GET /about/foo
+- GET /about/../foo 重定向 GET /about/foo
+
+### 匹配主机
+
+```go {2,8}
+// 匹配主机 example.com 的所有请求
+mux.GET("example.com/", func(w http.ResponseWriter, r *http.Request) error {
+	fmt.Fprintf(w, "Welcome to example.com!")
+  return nil
+})
+
+// 匹配所有主机的请求
+mux.GET("/", func(w http.ResponseWriter, r *http.Request) error {
+	fmt.Fprintf(w, "API data endpoint")
+  return nil
+})
+```
+
+pattern的格式为`[HOST]/[PATH]`,当省略HOST时，表示匹配所有主机。
+
+- `GET example.com/` 会匹配`example.com/`， 而不是`/`, 因为`example.com/`更具体。
+
+### 通配符匹配
+
+1. 路径参数通过`{name}`来设置
+
+```go
+mux.Get("/user/{id}", func(w http.ResponseWriter, r *http.Request) error {
+	// 获取路径参数
+	id := r.PathValue("id")
+	fmt.Fprintf(w, "id = %s", id)
+	return nil
+})
+```
+
+- GET /user/1 响应 "id = 1"
+- GET /user/2 响应 "id = 2"
+
+2. 省略号`...`
+
+```go
+mux.Get("/user/{ids...}", func(w http.ResponseWriter, r *http.Request) error {
+		// 获取路径参数
+		id := r.PathValue("id")
+		fmt.Fprintf(w, "ids = %s", id)
+		return nil
+})
+```
+
+- GET /user/foo/bar 响应 "ids = foo/bar"
+- GET /user/foo 响应 "ids = foo"
+- GET /user/ 响应 "ids = "
+
+
+
+
+
+
+
+

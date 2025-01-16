@@ -1,0 +1,48 @@
+如何实现分组功能呢？在net/http中，它是这样实现的：
+
+新建两个`http.ServeMux`，分别为v1和v2:
+
+```go
+func main() {
+	mux := http.NewServeMux()
+
+	v1 := http.NewServeMux()
+	v2 := http.NewServeMux()
+
+	mux.Handle("/v1/", http.StripPrefix("/v1", v1))
+	mux.Handle("/v2/", http.StripPrefix("/v2", v2))
+}
+```
+
+`mux.Handle`把以`/v1/`开头的请求转发到v1, `http.StriPrefix`只是把请求的URL前缀`/v1`去掉。
+
+但是这样的分组有些不方便，我们优化一下，使用之前的结构体`ServeMux`
+
+```go
+type ServeMux struct {
+  http.ServeMux
+}
+```
+
+给它写一个分组的方法`Group`，它返回一个新的`*ServeMux`
+
+```go
+func (m *ServeMux) Group(pattern string) *ServeMux {
+	subMux := &ServeMux{
+		ServeMux: http.ServeMux{},
+	}
+
+	// 去除后缀"/"
+	stripPattern := strings.TrimSuffix(pattern, "/")
+	m.ServeMux.Handle(pattern, http.StripPrefix(stripPattern, subMux))
+
+	return subMux
+}
+```
+
+这就是分组的主要逻辑。具体实现请参考:
+<span className="text-sky-300">https://github.com/aeilang/httpz/blob/main/http.go</span>
+
+
+
+

@@ -1,34 +1,71 @@
-## Why Develop httpz
+Consider the following helloHandler, which returns an error:
 
-The `net/http` version 1.22 has enhanced routing capabilities, allowing us to develop a complete web project without third-party routers (frameworks) like `Echo`, `gin`, and `chi`. However, the standard library's pursuit of simplicity makes its user experience less convenient than third-party frameworks.
+```go
+func helloHandler(w http.ResponseWriter, r *http.Request) error {
+	w.Write([]byte("hello httpz"))
+	return nil
+}
+```
 
-For example:
+httpz simply writes an adapter to convert the above handler into the standard library handler below:
 
-1. Grouping is inconvenient. `net/http` uses the `Handle(pattern, http.Handler)` function to forward requests of the same group to `http.Handler`, which is not easy to manage. In contrast, the `Echo` framework directly uses `Group(pattern)` to achieve this.
+```go
+http.HandleFunc("GET /hello", func(w http.ResponseWriter, r *http.Request) {
+	err := helloHandler(w, r)
 
-2. Centralized error handling in Echo is a good practice. We should return errors in the `handler`, which can reduce the workload of error handling.
+	if err != nil {
+      // Global error handling function
+      ErrorHandlerFunc(w, err)
+	}
+})
+```
 
-3. Data binding needs to be implemented manually. When a handler needs to bind many request parameters, `net/http` requires you to bind them one by one.
+This allows us to handle errors centrally. Consider the following example:
 
-4. When returning a response, `net/http` requires you to manually set the response headers, status code, and response body, which can lead to repetitive code.
+```go filename="main.go"
+// ...
 
-## What is httpz
+// mux.Get("/hello", helloHandler)
+func helloHandler(w http.ResponseWriter, r *http.Request) error {
+	name := r.URL.Query().Get("name")
 
-httpz is a collection of the following features:
+	if name == "" {
+		return httpz.NewHTTPError(http.StatusBadRequest, "name is required")
+	}
 
-  - Based on `net/http` version 1.22+
-  - Global error handling
-  - Convenient grouping
-  - Middleware from chi
-  - Data binding from Echo
-  - Quick response returns
+	fmt.Fprintf(w, "hello %s", name)
+	return nil
+}
+```
 
-httpz is merely an enhancement library for `net/http`, not a new framework. Using httpz is essentially developing with the `net/http` standard library.
+When we visit <span className="text-sky-300">http://localhost:8080/hello</span>, and name is an empty string, you will see: `{"msg":"name is required"}`, which is the response returned by our default error handling function.
 
-httpz is fully compatible with `net/http`, allowing you to choose to use httpz's enhanced features or directly use `net/http`.
+## Default Error Handling Function
 
-## Design Philosophy
+```go
+// default centralized error handling function.
+// only the *HTTPError will trigger error response.
+func DefaultErrHandlerFunc(err error, w http.ResponseWriter) {
+	if he, ok := err.(*HTTPError); ok {
+		rw := NewHelperRW(w)
+		rw.JSON(he.StatusCode, Map{"msg": he.Msg})
+	} else {
+		slog.Error(err.Error())
+	}
+}
+```
+Note that the default error handling function only triggers a response for errors of type `*HTTPError`. Other types of errors will only log the error. The reason for this design is that when users return an `HTTPError`, they clearly know that the error will trigger a response, reducing the possibility of redundant response returns.
 
-- Zero dependencies, all features are implemented based on the `net/http` API.
-- Convenient and non-intrusive. You can still develop using the `net/http` conventions.
-- It is an enhancement library, not a new framework.
+You can also customize your own global error handling function:
+
+```go
+func main() {
+	mux := httpz.NewServeMux()
+
+	mux.ErrHandlerFunc = func(err error, w http.ResponseWriter) {
+      // It has already been checked that err != nil
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+```
+In this case, all non-nil errors will trigger a response.

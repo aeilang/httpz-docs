@@ -19,7 +19,7 @@ export function BlogHeader() {
 export function Blog() {
   const { locale } = useRouter();
   const READMORE_TEXT = {
-    vi: 'Xem tiếp →',
+    cn: 'Read more →',
     en: 'Read more →',
   };
 

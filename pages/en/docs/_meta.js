@@ -2,7 +2,7 @@
 export default {
   index: 'Introduction',
   guide: "Guide",
-  core: "Core",
+  core: "Handwriting httpz",
   middleware: "Middleware",
   example: "Example",
 };

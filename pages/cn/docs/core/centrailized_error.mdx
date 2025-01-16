@@ -1,0 +1,102 @@
+
+net/http 处理错误的一般流程如下:
+
+```go {8-12}
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /hello", helloHandler)
+	http.ListenAndServe(":8080", mux)
+}
+
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+	condition := false
+	if !condition {
+		http.Error(w, "bad reqeust", http.StatusBadRequest)
+		return
+	}
+	
+	fmt.Fprintf(w, "hello world")
+}
+```
+
+设想一下，你在使用net/http 时，想添加错误集中处理的功能。
+
+那么helloHandler就必须返回一个error
+
+```go {1}
+func helloHandlerWithErr(w http.ResponseWriter, r *http.Request) error {
+	condition := false
+	if !condition {
+		return fmt.Errorf("condition is false")
+	}
+
+	fmt.Fprintf(w, "hello world")
+	return nil
+}
+```
+
+可是`http.HandleFunc`只接受`func(http.ResponseWriter, *http.Request)`签名的handler函数:
+
+```go
+HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
+```
+
+你想到了写一个适配器，把
+
+```go
+type HandlerFunc func(http.ResponseWriter, *http.Request) error
+```
+
+转化成
+
+```go
+type HttpHandlerFunc func(http.ResponseWriter, *http.Request)
+```
+
+动手实现，你在适配器中进行集中错误处理:
+
+```go
+func Adator(fn HandlerFunc) HttpHandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := fn(w, r)
+
+		// 集中错误处理
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+}
+```
+
+你已经实现了集中错误处理，但是需要你使用`Adator`对每个HanderFunc进行包裹:
+
+```go
+mux.HandleFunc("GET /hello", Adator(helloHandlerWithErr))
+```
+
+这是很繁琐的，我们需要进一步优化。
+
+创建一个结构体`ServeMux`它嵌入了`http.ServeMux`:
+
+```go
+type ServeMux struct {
+	http.ServeMux
+}
+```
+
+重写`ServeMux`的`HandleFunc`方法, 它接收`HandlerFunc`而不是原来的`HttpHandlerFunc`：
+
+```go
+func (m *ServeMux) HandleFunc(pattern string, handler HandlerFunc) {
+	m.ServeMux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		err := handler(w, r)
+
+		if err != nil {
+			http.Error(w, "some msg", http.StatusBadRequest)
+		}
+	})
+}
+```
+
+这样就不需要使用`Adator`进行包裹了。完整的实现在
+<span className="text-sky-300">https://github.com/aeilang/httpz/blob/main/http.go</span>

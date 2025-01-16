@@ -1,7 +1,7 @@
 export default {
   index: {
     type: 'page',
-    title: 'Nextra',
+    title: 'HTTPZ',
     display: 'hidden',
     theme: {
       layout: 'raw',

@@ -1,6 +1,4 @@
-## 2.错误集中处理
-
-你可以看到，helloHandler返回error:
+考虑下面的helloHandler，它返回error:
 
 ```go
 func helloHandler(w http.ResponseWriter, r *http.Request) error {
@@ -17,7 +15,7 @@ http.HandleFunc("GET /hello", func(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
       // 全局错误处理函数
-      ErrorHandler(w, err)
+      ErrorHandlerFunc(w, err)
 	}
 })
 ```
@@ -27,6 +25,7 @@ http.HandleFunc("GET /hello", func(w http.ResponseWriter, r *http.Request) {
 ```go filename="main.go"
 // ...
 
+// mux.Get("/hello", helloHandler)
 func helloHandler(w http.ResponseWriter, r *http.Request) error {
 	name := r.URL.Query().Get("name")
 
@@ -43,7 +42,7 @@ func helloHandler(w http.ResponseWriter, r *http.Request) error {
 , 这时name为空字符串，你将会看到:`{"msg":"name is required"}`,这是我们默认的错误处理函数
 返回的响应。
 
-### 默认的错误处理函数
+## 默认的错误处理函数
 
 ```go
 // default centrailzed error handling function.

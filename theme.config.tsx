@@ -126,11 +126,9 @@ const config: DocsThemeConfig = {
   head: function useHead() {
     const config = useConfig<{ description?: string; image?: string }>();
     const { locale } = useRouter();
-    const description = config.frontMatter.description || 'Website description';
-    const image =
-      config.frontMatter.image ||
-      'https://res.cloudinary.com/thanhnam/image/upload/v1704087446/thanhnamnguyen.dev/lyoko-banner-web_nr3vg9.jpg';
-    const title = `${config.title} | Brand Name (${locale})`;
+    const description = config.frontMatter.description || 'httpz | HTTPZ';
+    const image = config.frontMatter.image 
+    const title = `${config.title}`;
     return (
       <>
         <title>{title}</title>

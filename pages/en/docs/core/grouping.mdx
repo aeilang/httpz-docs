@@ -1,0 +1,44 @@
+How to implement grouping functionality? In net/http, it is implemented like this:
+
+Create two `http.ServeMux`, one for v1 and one for v2:
+
+```go
+func main() {
+	mux := http.NewServeMux()
+
+	v1 := http.NewServeMux()
+	v2 := http.NewServeMux()
+
+	mux.Handle("/v1/", http.StripPrefix("/v1", v1))
+	mux.Handle("/v2/", http.StripPrefix("/v2", v2))
+}
+```
+
+`mux.Handle` forwards requests starting with `/v1/` to v1, and `http.StripPrefix` simply removes the `/v1` prefix from the request URL.
+
+However, this way of grouping is somewhat inconvenient. Let's optimize it using the previously defined `ServeMux` struct:
+
+```go
+type ServeMux struct {
+  http.ServeMux
+}
+```
+
+Write a `Group` method for it, which returns a new `*ServeMux`:
+
+```go
+func (m *ServeMux) Group(pattern string) *ServeMux {
+	subMux := &ServeMux{
+		ServeMux: http.ServeMux{},
+	}
+
+	// Remove the trailing "/"
+	stripPattern := strings.TrimSuffix(pattern, "/")
+	m.ServeMux.Handle(pattern, http.StripPrefix(stripPattern, subMux))
+
+	return subMux
+}
+```
+
+This is the main logic for grouping. For the complete implementation, please refer to:
+<span className="text-sky-300">https://github.com/aeilang/httpz/blob/main/http.go</span>

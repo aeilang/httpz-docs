@@ -23,24 +23,8 @@ export default withNextra({
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '"res.cloudinary.com"',
-      },
-      {
-        protocol: 'https',
         hostname: '"assets.vercel.com"',
       },
-      {
-        protocol: "https",
-        hostname: "go-chi.io"
-      },
-      {
-        protocol: "https",
-        hostname: "echo.labstack.com"
-      },
-      {
-        protocol: "https",
-        hostname: "api.microlink.io"
-      }
     ],
   },
 });

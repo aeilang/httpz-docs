@@ -52,7 +52,7 @@ go run main.go
 
 你可以看到，helloHandler返回error:
 
-```go
+```go {3}
 func helloHandler(w http.ResponseWriter, r *http.Request) error {
 	w.Write([]byte("hello httpz"))
 	return nil
@@ -64,6 +64,7 @@ func helloHandler(w http.ResponseWriter, r *http.Request) error {
 ```go filename="main.go"
 // ...
 
+// mux.Get("hello", helloHandler)
 func helloHandler(w http.ResponseWriter, r *http.Request) error {
     // 获取请求参数name
 	name := r.URL.Query().Get("name")
@@ -525,3 +526,45 @@ func helloHandler(w http.ResponseWriter, r *http.Request) error {
 2025/01/15 03:15:22 after routeMW
 ```
 原理和HandlerMiddleware一样。
+
+## 7.响应
+
+你可以使用httpz.NewHelperRW 快捷地返回响应。
+
+```go {8-9}
+// mux.Get("/user", getUser)
+func getUser(w http.ResponseWriter, r *http.Request) error {
+	u := User{
+		Name: "lihua",
+		Age:  18,
+	}
+
+	hw := httpz.NewHelperRW(w)
+	return hw.JSON(http.StatusOK, u)
+}
+```
+
+上面代码等价于
+
+```go {8-10}
+// mux.Get("/user", getUser)
+func getUser(w http.ResponseWriter, r *http.Request) error {
+	u := User{
+		Name: "lihua",
+		Age:  18,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	return json.NewEncoder(w).Encode(u)
+}
+```
+
+除了`JSON`方法，还有更多便捷方法
+
+```go
+hw.JSON()
+hw.String()
+hw.XML()
+hw.HTML()
+```

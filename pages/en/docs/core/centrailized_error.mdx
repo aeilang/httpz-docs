@@ -1,0 +1,101 @@
+The general process of error handling in net/http is as follows:
+
+```go {8-12}
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /hello", helloHandler)
+	http.ListenAndServe(":8080", mux)
+}
+
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+	condition := false
+	if !condition {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	
+	fmt.Fprintf(w, "hello world")
+}
+```
+
+Imagine you want to add centralized error handling when using net/http.
+
+In that case, helloHandler must return an error:
+
+```go {1}
+func helloHandlerWithErr(w http.ResponseWriter, r *http.Request) error {
+	condition := false
+	if !condition {
+		return fmt.Errorf("condition is false")
+	}
+
+	fmt.Fprintf(w, "hello world")
+	return nil
+}
+```
+
+However, `http.HandleFunc` only accepts handler functions with the signature `func(http.ResponseWriter, *http.Request)`:
+
+```go
+HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
+```
+
+You thought of writing an adapter to convert
+
+```go
+type HandlerFunc func(http.ResponseWriter, *http.Request) error
+```
+
+into
+
+```go
+type HttpHandlerFunc func(http.ResponseWriter, *http.Request)
+```
+
+You implement centralized error handling in the adapter:
+
+```go
+func Adapter(fn HandlerFunc) HttpHandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := fn(w, r)
+
+		// Centralized error handling
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+}
+```
+
+You have implemented centralized error handling, but you need to wrap each HandlerFunc with `Adapter`:
+
+```go
+mux.HandleFunc("GET /hello", Adapter(helloHandlerWithErr))
+```
+
+This is cumbersome, and we need to further optimize it.
+
+Create a struct `ServeMux` that embeds `http.ServeMux`:
+
+```go
+type ServeMux struct {
+	http.ServeMux
+}
+```
+
+Override the `HandleFunc` method of `ServeMux` to accept `HandlerFunc` instead of the original `HttpHandlerFunc`:
+
+```go
+func (m *ServeMux) HandleFunc(pattern string, handler HandlerFunc) {
+	m.ServeMux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		err := handler(w, r)
+
+		if err != nil {
+			http.Error(w, "some msg", http.StatusBadRequest)
+		}
+	})
+}
+```
+
+This way, you don't need to use `Adapter` for wrapping. The complete implementation is available at
+<span className="text-sky-300">https://github.com/aeilang/httpz/blob/main/http.go</span>

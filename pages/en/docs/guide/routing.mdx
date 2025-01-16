@@ -1,0 +1,159 @@
+httpz is based on httpz.ServeMux
+
+> ServeMux is an HTTP request multiplexer. It matches the URL of each incoming request against a list of registered patterns and calls the handler for the most specific pattern.
+> -- go.dev
+
+### Basic Route Matching
+
+1. Exact match, without a trailing `/`:
+
+```go {4}
+func main() {
+	mux := httpz.NewServeMux()
+
+	mux.Get("/about", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about")
+		return nil
+	})
+
+	http.ListenAndServe(":8080", mux)
+}
+```
+
+- GET <span className="text-sky-300">http://localhost:8080/about</span>, matches "/about" response: "/about"
+- GET <span className="text-sky-300">http://localhost:8080/about/</span>, does not match response: "404 page not found"
+- GET <span className="text-sky-300">http://localhost:8080/about/foo</span>, does not match response: "404 page not found"
+
+2. `/` as a suffix
+
+Consider the following example, which matches all GET requests starting with `/about`:
+
+```go {4}
+func main() {
+	mux := httpz.NewServeMux()
+
+	mux.Get("/about/", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about/")
+		return nil
+	})
+
+	http.ListenAndServe(":8080", mux)
+}
+```
+
+- GET <span className="text-sky-300">http://localhost:8080/about/</span>, matches "/about/" response: "/about/"
+- GET <span className="text-sky-300">http://localhost:8080/about/foo</span>, matches "/about/" response: "/about/"
+
+Note that accessing `GET /about` will automatically redirect to `GET /about/`
+- GET <span className="text-sky-300">http://localhost:8080/about</span> -> redirects to `/about/`
+
+If `GET /about` is registered, it will not redirect to `GET /about/`, because `GET /about` is more specific.
+
+```go {9}
+func main() {
+	mux := httpz.NewServeMux()
+
+	mux.Get("/about/", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about/")
+		return nil
+	})
+
+	mux.Get("/about", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about")
+		return nil
+	})
+
+	http.ListenAndServe(":8080", mux)
+}
+```
+
+- GET <span className="text-sky-300">http://localhost:8080/about</span> matches "/about", response "/about"
+
+### Matching Rules
+
+Consider the following example. If both `GET /about/foo` and `GET /about/` are registered, which controller will `GET /about/foo` match?
+
+- GET /about/foo exact match
+- GET /about/ matches all URLs with the `/about/` prefix
+
+```go {4,9}
+func main() {
+	mux := httpz.NewServeMux()
+
+	mux.Get("/about/foo", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about/foo")
+		return nil
+	})
+
+	mux.Get("/about/", func(w http.ResponseWriter, r *http.Request) error {
+		fmt.Fprintf(w, "/about/")
+		return nil
+	})
+
+	http.ListenAndServe(":8080", mux)
+}
+```
+
+- GET <span className="text-sky-300">http://localhost:8080/about/foo</span> matches "/about/foo", response "/about/foo"
+
+Because `/about/foo` is more specific. The routing matching rule is that more specific patterns take precedence.
+
+### Path Cleaning
+
+Extra `/` or `.` in the URL will be automatically removed, and it will redirect to the clean path.
+
+For example:
+
+- GET /about//foo redirects to GET /about/foo
+- GET /about/../foo redirects to GET /about/foo
+
+### Host Matching
+
+```go {2,8}
+// Matches all requests for the host example.com
+mux.GET("example.com/", func(w http.ResponseWriter, r *http.Request) error {
+	fmt.Fprintf(w, "Welcome to example.com!")
+  return nil
+})
+
+// Matches requests for all hosts
+mux.GET("/", func(w http.ResponseWriter, r *http.Request) error {
+	fmt.Fprintf(w, "API data endpoint")
+  return nil
+})
+```
+
+The pattern format is `[HOST]/[PATH]`. When the HOST is omitted, it matches all hosts.
+
+- `GET example.com/` will match `example.com/`, not `/`, because `example.com/` is more specific.
+
+### Wildcard Matching
+
+1. Path parameters are set using `{name}`
+
+```go
+mux.Get("/user/{id}", func(w http.ResponseWriter, r *http.Request) error {
+	// Get path parameter
+	id := r.PathValue("id")
+	fmt.Fprintf(w, "id = %s", id)
+	return nil
+})
+```
+
+- GET /user/1 responds with "id = 1"
+- GET /user/2 responds with "id = 2"
+
+2. Ellipsis `...`
+
+```go
+mux.Get("/user/{ids...}", func(w http.ResponseWriter, r *http.Request) error {
+		// Get path parameter
+		id := r.PathValue("id")
+		fmt.Fprintf(w, "ids = %s", id)
+		return nil
+})
+```
+
+- GET /user/foo/bar responds with "ids = foo/bar"
+- GET /user/foo responds with "ids = foo"
+- GET /user/ responds with "ids = "

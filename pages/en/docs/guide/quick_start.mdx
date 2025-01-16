@@ -51,7 +51,7 @@ Visit <span className="text-sky-300">http://localhost:8080/hello</span> and you 
 
 As you can see, `helloHandler` returns an error:
 
-```go
+```go {3}
 func helloHandler(w http.ResponseWriter, r *http.Request) error {
 	w.Write([]byte("hello httpz"))
 	return nil
@@ -63,6 +63,7 @@ Consider the following example:
 ```go filename="main.go"
 // ...
 
+// mux.Get("hello", helloHandler)
 func helloHandler(w http.ResponseWriter, r *http.Request) error {
     // Get the request parameter name
 	name := r.URL.Query().Get("name")
@@ -525,3 +526,45 @@ Return to the command line, and the following logs are printed:
 ```
 
 The principle is the same as `HandlerMiddleware`.
+
+## 7. Response
+
+You can use httpz.NewHelperRW to easily send responses.
+
+```go {8-9}
+// mux.Get("/user", getUser)
+func getUser(w http.ResponseWriter, r *http.Request) error {
+	u := User{
+		Name: "lihua",
+		Age:  18,
+	}
+
+	hw := httpz.NewHelperRW(w)
+	return hw.JSON(http.StatusOK, u)
+}
+```
+
+The above code is equivalent to:
+
+```go {8-10}
+// mux.Get("/user", getUser)
+func getUser(w http.ResponseWriter, r *http.Request) error {
+	u := User{
+		Name: "lihua",
+		Age:  18,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	return json.NewEncoder(w).Encode(u)
+}
+```
+
+Besides the `JSON` method, there are other convenient methods available:
+
+```go
+hw.JSON()
+hw.String()
+hw.XML()
+hw.HTML()
+```
