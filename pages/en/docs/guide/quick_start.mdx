@@ -544,6 +544,20 @@ func getUser(w http.ResponseWriter, r *http.Request) error {
 }
 ```
 
+Or use `httpz.JSON`. It is equivalent to `httpz.NewHelperRW(w).JSON`.
+
+```go {8}
+// mux.Get("/user", getUser)
+func getUser(w http.ResponseWriter, r *http.Request) error {
+	u := User{
+		Name: "lihua",
+		Age:  18,
+	}
+
+	return httpz.JSON(w, http.StatusOK, u)
+}
+```
+
 The above code is equivalent to:
 
 ```go {8-10}

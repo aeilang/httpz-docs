@@ -544,6 +544,20 @@ func getUser(w http.ResponseWriter, r *http.Request) error {
 }
 ```
 
+或者使用`httpz.JSON`。它等价于`httpz.NewHelperRW(w).JSON`。
+
+```go {8}
+// mux.Get("/user", getUser)
+func getUser(w http.ResponseWriter, r *http.Request) error {
+	u := User{
+		Name: "lihua",
+		Age:  18,
+	}
+
+	return httpz.JSON(w, http.StatusOK, u)
+}
+```
+
 上面代码等价于
 
 ```go {8-10}

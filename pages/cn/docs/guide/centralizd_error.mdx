@@ -50,7 +50,7 @@ func helloHandler(w http.ResponseWriter, r *http.Request) error {
 func DefaultErrHandlerFunc(err error, w http.ResponseWriter) {
 	if he, ok := err.(*HTTPError); ok {
 		rw := NewHelperRW(w)
-		rw.JSON(he.StatusCode, Map{"msg": he.Msg})
+		rw.JSON(he.StatusCode, he)
 	} else {
 		slog.Error(err.Error())
 	}

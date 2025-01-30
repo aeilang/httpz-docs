@@ -48,7 +48,7 @@ When we visit <span className="text-sky-300">http://localhost:8080/hello</span>,
 func DefaultErrHandlerFunc(err error, w http.ResponseWriter) {
 	if he, ok := err.(*HTTPError); ok {
 		rw := NewHelperRW(w)
-		rw.JSON(he.StatusCode, Map{"msg": he.Msg})
+		rw.JSON(he.StatusCode, he)
 	} else {
 		slog.Error(err.Error())
 	}
